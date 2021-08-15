@@ -33,14 +33,18 @@ The provided executors act as [proxies](https://en.wikipedia.org/wiki/Proxy_patt
 
 The `__init__` methods of the instrumented executors take two additional optional parameters:
 
-| Parameter     | Type                                  | Default value                                   | Description                                                                                                                                                                                                   |
-| ------------- | ------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `exporter_id` | `str`                                 | `""`                                            | This id is used as the value for the `exporter` label in all metrics. Useful when your app uses multiple executors and you want to measure them separately                                                    |
-| `registry`    | `prometheus_client.CollectorRegistry` | `prometheus_client.REGISTRY` (default registry) | Useful when you're using a registry other than the default for whatever reason, e.g. using `prometheus_client` [multiprocess mode](https://github.com/prometheus/client_python#multiprocess-mode-eg-gunicorn) |
+| Parameter     | Type                                  | Default value                                   |
+| ------------- | ------------------------------------- | ----------------------------------------------- |
+| `exporter_id` | `str`                                 | `""`                                            |
+| `registry`    | `prometheus_client.CollectorRegistry` | `prometheus_client.REGISTRY` (default registry) |
+
+`exporter_id` is used as the value for the `exporter` label in all metrics. Useful when your app uses multiple executors and you want to measure them separately.
+
+While `registry` is useful when you're using a registry other than the default for whatever reason, e.g. when using `prometheus_client` [multiprocess mode](https://github.com/prometheus/client_python#multiprocess-mode-eg-gunicorn).
 
 ### Custom executors
 
-The `InstrumentedExecutorProxy` class does the heavy-lifting. If you're using a custom executor, you can still instrument them by using wrapping it:
+The instrumented executors are simple wrappers around builtin executors provided for convenience, while `InstrumentedExecutorProxy` does the heavy-lifting. If you're using a custom executor, you can wrap it like this:
 
 ```py
 from executor_exporter import InstrumentedExecutorProxy, ExecutorExporter
