@@ -51,3 +51,12 @@ exporter = ExecutorExporter(executor)
 
 instrumented_executor = InstrumentedExecutorProxy(executor, exporter, max_workers)
 ```
+
+## TODO
+
+- [ ] Testing
+- [ ] Housekeeping
+  - [ ] Makefile
+  - [ ] metrics table gen
+- [ ] CI/CD
+- [ ] codecov
