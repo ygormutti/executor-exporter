@@ -1,10 +1,19 @@
 [tool.poetry]
 name = "executor-exporter"
 version = "0.1.1"
-description = ""
+description = "A Prometheus exporter for Python concurrent.futures executors"
+license = "Apache-2.0"
 authors = ["Ygor Mutti <ygormutti@gmail.com>"]
 readme = "README.md"
-license = "Apache-2.0"
+repository = "https://github.com/ygormutti/executor-exporter"
+keywords = [
+    "ThreadPoolExecutor",
+    "ProcessPoolExecutor",
+    "prometheus",
+    "metrics",
+    "exporter",
+]
+exclude = ["docs/**"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
