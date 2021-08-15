@@ -2,14 +2,8 @@ from enum import Enum
 from timeit import default_timer
 from typing import Callable, Generator, Optional, Union
 
-from prometheus_client import (
-    REGISTRY,
-    CollectorRegistry,
-    Counter,
-    Gauge,
-    Histogram,
-    Info,
-)
+from prometheus_client import (REGISTRY, CollectorRegistry, Counter, Gauge,
+                               Histogram, Info)
 
 PREFFIX = "python_executor_"
 

@@ -4,8 +4,8 @@ from typing import Callable, Optional
 
 from prometheus_client import CollectorRegistry
 
-from executor_exporter.proxy import InstrumentedExecutorProxy
 from executor_exporter.exporter import ExecutorExporter
+from executor_exporter.proxy import InstrumentedExecutorProxy
 
 
 class ThreadPoolExecutor(InstrumentedExecutorProxy):
