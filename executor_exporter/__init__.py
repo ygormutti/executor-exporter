@@ -7,7 +7,7 @@ from executor_exporter.executors import (
 )
 from executor_exporter.exporter import ExecutorExporter
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = (
     "ExecutorExporter",
