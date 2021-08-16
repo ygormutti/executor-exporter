@@ -2,13 +2,11 @@ from concurrent import futures
 from functools import wraps
 from typing import Callable, Optional
 
-from prometheus_client import CollectorRegistry
-
 from executor_exporter.exporter import ExecutorExporter
 from executor_exporter.proxy import InstrumentedExecutorProxy
 
 
-class ThreadPoolExecutor(InstrumentedExecutorProxy):
+class ThreadPoolExecutor(InstrumentedExecutorProxy, futures.ThreadPoolExecutor):
     def __init__(
         self,
         max_workers=None,
@@ -16,17 +14,20 @@ class ThreadPoolExecutor(InstrumentedExecutorProxy):
         initializer=None,
         initargs=(),
         executor_id: Optional[str] = None,
-        registry: Optional[CollectorRegistry] = None,
     ) -> None:
-        exporter = ExecutorExporter(futures.ThreadPoolExecutor, executor_id, registry)
+        exporter = ExecutorExporter(futures.ThreadPoolExecutor, executor_id)
         initializer = _wrap_initializer(initializer, exporter)
         executor = futures.ThreadPoolExecutor(
             max_workers, thread_name_prefix, initializer, initargs
         )
-        super().__init__(executor, exporter, max_workers)
+        super().__init__(
+            executor,
+            exporter,
+            executor._max_workers,  # type: ignore # should be public
+        )
 
 
-class ProcessPoolExecutor(InstrumentedExecutorProxy):
+class ProcessPoolExecutor(InstrumentedExecutorProxy, futures.ProcessPoolExecutor):
     def __init__(
         self,
         max_workers=None,
@@ -34,20 +35,25 @@ class ProcessPoolExecutor(InstrumentedExecutorProxy):
         initializer=None,
         initargs=(),
         executor_id: Optional[str] = None,
-        registry: Optional[CollectorRegistry] = None,
     ) -> None:
-        exporter = ExecutorExporter(futures.ProcessPoolExecutor, executor_id, registry)
+        exporter = ExecutorExporter(futures.ProcessPoolExecutor, executor_id)
         initializer = _wrap_initializer(initializer, exporter)
         executor = futures.ProcessPoolExecutor(
             max_workers, mp_context, initializer, initargs
         )
-        super().__init__(executor, exporter, max_workers)
+        super().__init__(
+            executor,
+            exporter,
+            executor._max_workers,  # type: ignore # should be public
+        )
 
 
 def _wrap_initializer(initializer: Callable, exporter: ExecutorExporter):
     @wraps(initializer)
     def wrapper(*args, **kwargs):
-        exporter.inc_initialized_workers_counter()
-        return initializer(*args, **kwargs)
+        exporter.inc_initialized_workers()
+
+        if initializer is not None and not callable(initializer):
+            initializer(*args, **kwargs)
 
     return wrapper

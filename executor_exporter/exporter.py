@@ -1,14 +1,63 @@
 from enum import Enum
-from timeit import default_timer
-from typing import Callable, Generator, Optional, Union
+from typing import Optional, Union
 
-from prometheus_client import (REGISTRY, CollectorRegistry, Counter, Gauge,
-                               Histogram, Info)
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram
 
 PREFFIX = "python_executor_"
 
 
-class TaskStatuses(Enum):
+class Metrics:
+    def __init__(self, registry=REGISTRY) -> None:
+        self.max_workers_counter = Counter(
+            PREFFIX + "max_workers_total",
+            "Max workers accumulated by executor (instances with same executor_id)",
+            ("executor", "executor_type"),
+            registry=registry,
+        )
+
+        self.initialized_workers_counter = Counter(
+            PREFFIX + "initialized_workers_total",
+            "Number of workers initialized by the executor",
+            ("executor", "executor_type"),
+            registry=registry,
+        )
+
+        self.submitted_tasks_counter = Counter(
+            PREFFIX + "submitted_tasks_total",
+            "Number of tasks submitted to the executor",
+            ("executor", "executor_type"),
+            registry=registry,
+        )
+
+        self.task_wait_histogram = Histogram(
+            PREFFIX + "task_wait_seconds",
+            "Time elapsed between tasks submission and start",
+            ("executor", "executor_type"),
+            registry=registry,
+        )
+
+        self.running_tasks_gauge = Gauge(
+            PREFFIX + "running_tasks_total",
+            "Number of started tasks not yet done",
+            ("executor", "executor_type"),
+            registry=registry,
+        )
+
+        self.tasks_duration_histogram = Histogram(
+            PREFFIX + "tasks_duration_seconds",
+            "Duration of tasks done by the executor, segmented by result",
+            ("executor", "executor_type", "result"),
+            registry=registry,
+        )
+
+    def __iter__(self):
+        yield from vars(self).values()
+
+
+metrics = Metrics()
+
+
+class TaskResult(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -18,87 +67,32 @@ class ExecutorExporter:
         self,
         executor: Union[type, object],
         executor_id: Optional[str] = None,
-        registry: Optional[CollectorRegistry] = None,
+        metrics: Metrics = metrics,
     ) -> None:
         self.labelvalues = (executor_id or "", type_fqn(executor))
+        self.metrics = metrics
 
-        if registry is None:
-            registry = REGISTRY
+    def inc_max_workers(self, max_workers):
+        self.metrics.max_workers_counter.labels(*self.labelvalues).inc(max_workers)
 
-        self.max_workers_counter = Info(
-            PREFFIX + "max_workers",
-            "Total of workers the executor can have simultaneously",
-            ("executor", "executor_type"),
-            registry=registry,
-        )
+    def inc_initialized_workers(self):
+        self.metrics.initialized_workers_counter.labels(*self.labelvalues).inc()
 
-        self.initialized_workers_counter = Counter(
-            PREFFIX + "initialized_workers_count",
-            "Total of workers initialized by the executor",
-            ("executor", "executor_type"),
-            registry=registry,
-        )
+    def inc_submitted_tasks(self, by=1):
+        self.metrics.submitted_tasks_counter.labels(*self.labelvalues).inc(by)
 
-        self.submitted_tasks_counter = Counter(
-            PREFFIX + "submitted_tasks_count",
-            "Total of tasks submitted to the executor",
-            ("executor", "executor_type"),
-            registry=registry,
-        )
-
-        self.running_tasks_gauge = Gauge(
-            PREFFIX + "running_tasks_count",
-            "Total of started tasks not yet done",
-            ("executor", "executor_type"),
-            registry=registry,
-        )
-
-        self.tasks_duration_histogram = Histogram(
-            PREFFIX + "tasks_duration_seconds",
-            "Duration of tasks done by the executor, segmented by status",
-            ("executor", "executor_type"),
-            registry=registry,
-        )
-
-        self.supported_metrics = (
-            self.max_workers_counter,
-            self.initialized_workers_counter,
-            self.submitted_tasks_counter,
-            self.running_tasks_gauge,
-            self.tasks_duration_histogram,
-        )
-
-    def set_max_workers_count(self, max_workers):
-        self.max_workers_counter.labels(*self.labelvalues).info(max_workers)
-
-    def inc_initialized_workers_counter(self):
-        self.initialized_workers_counter.labels(*self.labelvalues).inc()
-
-    def inc_submitted_tasks_counter(self, by=1):
-        self.submitted_tasks_counter.labels(*self.labelvalues).inc(by)
+    def observe_task_wait(self, wait: float):
+        self.metrics.task_wait_histogram.labels(*self.labelvalues).observe(wait)
 
     def inc_running_tasks(self):
-        self.running_tasks_gauge.labels(*self.labelvalues).inc()
+        self.metrics.running_tasks_gauge.labels(*self.labelvalues).inc()
 
     def dec_running_tasks(self):
-        self.running_tasks_gauge.labels(*self.labelvalues).dec()
+        self.metrics.running_tasks_gauge.labels(*self.labelvalues).dec()
 
-    def task_duration_timer(
-        self,
-    ) -> Generator[Callable[[TaskStatuses], None], None, None]:
-        status = TaskStatuses.FAILED
-
-        def set_status(new_status: TaskStatuses):
-            nonlocal status
-            status = new_status
-
-        start = default_timer()
-        try:
-            yield set_status
-        finally:
-            duration = default_timer() - start
-            labelvalues = (*self.labelvalues, status.value)
-            self.tasks_duration_histogram.labels(labelvalues).observe(duration)
+    def observe_task_duration(self, result: TaskResult, duration: float):
+        labelvalues = (*self.labelvalues, result.value)
+        self.metrics.tasks_duration_histogram.labels(*labelvalues).observe(duration)
 
 
 # ref: https://stackoverflow.com/a/2020083/358761
