@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "executor-exporter"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Prometheus exporter for Python concurrent.futures executors"
 license = "Apache-2.0"
 authors = ["Ygor Mutti <ygormutti@gmail.com>"]
