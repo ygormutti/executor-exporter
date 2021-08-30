@@ -10,7 +10,7 @@ class Metrics:
     def __init__(self, registry=REGISTRY) -> None:
         self.max_workers_counter = Counter(
             PREFFIX + "max_workers_total",
-            "Max workers accumulated by executor (instances with same executor_id)",
+            "Max workers accumulated by executor, i.e. instances with same executor_id",
             ("executor", "executor_type"),
             registry=registry,
         )
@@ -45,7 +45,7 @@ class Metrics:
 
         self.tasks_duration_histogram = Histogram(
             PREFFIX + "tasks_duration_seconds",
-            "Duration of tasks done by the executor, segmented by result",
+            "Duration of tasks done by the executor, segmented by result (completed or failed)",
             ("executor", "executor_type", "result"),
             registry=registry,
         )
